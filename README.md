@@ -1,1 +1,1 @@
-Fatto Scheletro, next step Sequential.
+Fatto Sequential, next step Parte grossa
