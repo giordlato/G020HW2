@@ -1,8 +1,29 @@
 import math
+import random
 from timeit import default_timer as timer
 from pyspark import SparkContext, SparkConf
 import sys
 import os
+
+def SequentialFFT(P,K):
+    C = []
+    C.append(random.choice(P))
+    for i in range(0,K-1):
+        max_dist = 0
+        max__elem = 0
+        for j in range(len(P)):
+            if P[j] in C:
+                continue
+            distance = math.dist(C[i], P[j])
+            for m in range(0, len(C)-1):
+                new_distance = math.dist(C[m], P[j])
+                if new_distance < distance:
+                    distance = new_distance
+            if distance > max_dist:
+                max_dist = distance
+                max_elem = P[j]
+        C.append(max_elem)
+    return C
 
 def get_cell_id(x, y, Lambda):
     i = math.floor(x / Lambda)
@@ -92,9 +113,11 @@ def main():
     print("Number of points =", inputPoints.count())
     D = MRFFT(inputPoints,K)
     start1 = timer()
-    MRApproxOutliers(inputPoints, D, M)
+    #MRApproxOutliers(inputPoints, D, M)
     end1 = timer()
-    print("Running time of MRApproxOutliers =", math.floor((end1 - start1) * 1000), "ms")
+    listofPoints = inputPoints.collect()
+    print(SequentialFFT(listofPoints,K))
+    #print("Running time of MRApproxOutliers =", math.floor((end1 - start1) * 1000), "ms")
 
 
 if __name__ == "__main__":
