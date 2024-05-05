@@ -41,7 +41,7 @@ def MRFFT(inputPoints, K, sc):
     print("Running time of MRFFT Round 3 =", math.floor((end3 - start3) * 1000), "ms")
     return radius
 
-def SequentialFFT(P,K):
+'''def SequentialFFT(P,K):
     C = []
     C.append(random.choice(P))
     for i in range(0,K-1):
@@ -59,8 +59,32 @@ def SequentialFFT(P,K):
                 max_dist = distance
                 max_elem = P[j]
         C.append(max_elem)
-    return C
+    return C'''
 
+def SequentialFFT(P,K):
+    C = []
+    Tabella = []
+    for i in range (len(P)):
+        Tabella.append([P[i],0,0])
+    C.append(random.choice(P))
+    for i in range(0,K-1):
+        max_dist = 0
+        max_elem = 0
+        for j in range(len(P)):
+            if P[j] in C:
+                continue
+            distance = math.dist(C[i], P[j])
+            if i == 0:
+                Tabella[j][1] = C[i]
+                Tabella[j][2] = distance
+            if distance < Tabella[j][2]:
+                Tabella[j][1] = C[i]
+                Tabella[j][2] = distance
+            if Tabella[j][2] > max_dist:
+                max_dist = Tabella[j][2]
+                max_elem = P[j]
+        C.append(max_elem)
+    return C
 def get_cell_id(x, y, Lambda):
     i = math.floor(x / Lambda)
     j = math.floor(y / Lambda)
