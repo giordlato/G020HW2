@@ -7,25 +7,27 @@ import os
 
 
 def MRFFT(inputPoints, K, sc):
+
     def local_fft(partition):
         points = list(partition)
         if points:
-
-            return SequentialFFT(points, min(len(points), 50))
+            return SequentialFFT(points, min(len(points), K))
         else:
             return []
 
+    start1 = timer()
     local_centers_rdd = inputPoints.mapPartitions(local_fft)
-
     reduced_centers = local_centers_rdd.map(lambda center: (1, [center])).reduceByKey(lambda a, b: a + b)
+    end1 = timer()
+    print("Running time of MRFFT Round 1 =", math.floor((end1 - start1) * 1000), "ms")
     reduced_centers = reduced_centers.flatMap(lambda x: x[1]).collect()
 
     # Round 2: Compute final centers from the reduced set of local centers
     start2 = timer()
-    centers = SequentialFFT(reduced_centers, K)
+    centers = SequentialFFT(reduced_centers,K)
     end2 = timer()
     centers_broadcast = sc.broadcast(centers)
-    print("Time for Round 2 (compute centers):", math.floor((end2 - start2) * 1000), "ms")
+    print("Running time of MRFFT Round 2 =", math.floor((end2 - start2) * 1000), "ms")
 
     # Round 3: Compute the radius of the clustering
     start3 = timer()
@@ -35,8 +37,8 @@ def MRFFT(inputPoints, K, sc):
 
     radius = inputPoints.map(min_distance).reduce(max)
     end3 = timer()
-    print("Radius of clustering:", radius)
-    print("Time for Round 3 (compute radius):", math.floor((end3 - start3) * 1000), "ms")
+    print("Radius =", radius)
+    print("Running time of MRFFT Round 3 =", math.floor((end3 - start3) * 1000), "ms")
     return radius
 
 def SequentialFFT(P,K):
@@ -145,7 +147,6 @@ def main():
     start1 = timer()
     MRApproxOutliers(inputPoints, D, M)
     end1 = timer()
-    listofPoints = inputPoints.collect()
     print("Running time of MRApproxOutliers =", math.floor((end1 - start1) * 1000), "ms")
 
 
