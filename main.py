@@ -5,12 +5,46 @@ from pyspark import SparkContext, SparkConf
 import sys
 import os
 
+
+def MRFFT(inputPoints, K, sc):
+    def local_fft(partition):
+        points = list(partition)
+        if points:
+
+            return SequentialFFT(points, min(len(points), 50))
+        else:
+            return []
+
+    local_centers_rdd = inputPoints.mapPartitions(local_fft)
+
+    reduced_centers = local_centers_rdd.map(lambda center: (1, [center])).reduceByKey(lambda a, b: a + b)
+    reduced_centers = reduced_centers.flatMap(lambda x: x[1]).collect()
+
+    # Round 2: Compute final centers from the reduced set of local centers
+    start2 = timer()
+    centers = SequentialFFT(reduced_centers, K)
+    end2 = timer()
+    centers_broadcast = sc.broadcast(centers)
+    print("Time for Round 2 (compute centers):", math.floor((end2 - start2) * 1000), "ms")
+
+    # Round 3: Compute the radius of the clustering
+    start3 = timer()
+
+    def min_distance(point):
+        return min(math.dist(point, center) for center in centers_broadcast.value)
+
+    radius = inputPoints.map(min_distance).reduce(max)
+    end3 = timer()
+    print("Radius of clustering:", radius)
+    print("Time for Round 3 (compute radius):", math.floor((end3 - start3) * 1000), "ms")
+    return radius
+
 def SequentialFFT(P,K):
     C = []
     C.append(random.choice(P))
     for i in range(0,K-1):
         max_dist = 0
-        max__elem = 0
+        max_elem = 0
         for j in range(len(P)):
             if P[j] in C:
                 continue
@@ -89,11 +123,6 @@ def MRApproxOutliers(points_rdd, D, M):
     cell_counts = count_points_in_cells(points_rdd, Lambda)
     extend_with_neighbour_counts(cell_counts, M)
 
-
-def MRFFT(inputPoints, K):
-    return 0.02
-
-
 def main():
     assert len(sys.argv) == 5, "Incorrect number of parameters"
     print(sys.argv[1], "M=" + str(sys.argv[2]), "K=" + str(sys.argv[3]),"L=" + str(sys.argv[4]))
@@ -111,13 +140,13 @@ def main():
     rawData = sc.textFile(data_path).repartition(L).cache()
     inputPoints = rawData.map(lambda x: [float(i) for i in x.split(",")])
     print("Number of points =", inputPoints.count())
-    D = MRFFT(inputPoints,K)
+    D = MRFFT(inputPoints, K, sc)
+    print("Computed radius (D) for MRApproxOutliers:", D)
     start1 = timer()
-    #MRApproxOutliers(inputPoints, D, M)
+    MRApproxOutliers(inputPoints, D, M)
     end1 = timer()
     listofPoints = inputPoints.collect()
-    print(SequentialFFT(listofPoints,K))
-    #print("Running time of MRApproxOutliers =", math.floor((end1 - start1) * 1000), "ms")
+    print("Running time of MRApproxOutliers =", math.floor((end1 - start1) * 1000), "ms")
 
 
 if __name__ == "__main__":
