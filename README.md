@@ -1,1 +1,1 @@
-Fatto Sequential, next step Parte grossa
+Finito tutto, da aprire G020HW2
